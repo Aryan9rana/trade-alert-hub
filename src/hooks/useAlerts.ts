@@ -18,6 +18,8 @@ export interface Alert {
   updated_at: string;
 }
 
+export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
+
 const isValidStatus = (s: string): s is Alert['status'] =>
   ['new', 'active', 'ignored'].includes(s);
 
@@ -27,6 +29,7 @@ const isValidPriority = (p: string): p is Alert['priority'] =>
 export const useAlerts = (selectedDate: string) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const { toast } = useToast();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -133,6 +136,8 @@ export const useAlerts = (selectedDate: string) => {
     fetchAlerts(selectedDate);
 
     const setupSubscription = () => {
+      setConnectionStatus('connecting');
+      
       // Clean up existing subscription if any
       if (channelRef.current) {
         console.log('🧹 Cleaning up existing subscription...');
@@ -154,6 +159,7 @@ export const useAlerts = (selectedDate: string) => {
       connectionTimeoutId = setTimeout(() => {
         if (isSubscribed && channelRef.current) {
           console.warn('⚠️ Connection timeout - cleaning up and retrying...');
+          setConnectionStatus('error');
           supabase.removeChannel(channelRef.current);
           channelRef.current = null;
           if (retryCount < maxRetries) {
@@ -227,6 +233,7 @@ export const useAlerts = (selectedDate: string) => {
 
           console.log('📡 Subscription status:', status);
           if (status === 'SUBSCRIBED') {
+            setConnectionStatus('connected');
             // Clear connection timeout on successful subscription
             if (connectionTimeoutId) {
               clearTimeout(connectionTimeoutId);
@@ -234,6 +241,7 @@ export const useAlerts = (selectedDate: string) => {
             retryCount = 0;
             console.log('✅ Real-time subscription established');
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            setConnectionStatus('disconnected');
             console.warn(`⚠️ Subscription ${status} — retry ${retryCount + 1}`);
             if (retryCount < maxRetries && isSubscribed) {
               retryCount++;
@@ -244,6 +252,7 @@ export const useAlerts = (selectedDate: string) => {
                 }
               }, retryDelay * Math.pow(2, retryCount - 1)); // Exponential backoff with base 2
             } else {
+              setConnectionStatus('error');
               console.error('❌ Max retries reached. Manual refresh needed.');
               toast({
                 title: 'Connection Error',
@@ -263,6 +272,7 @@ export const useAlerts = (selectedDate: string) => {
     return () => {
       console.log('🧹 Cleaning up real-time subscription...');
       isSubscribed = false;
+      setConnectionStatus('disconnected');
       if (retryTimeout) {
         clearTimeout(retryTimeout);
       }
@@ -279,6 +289,7 @@ export const useAlerts = (selectedDate: string) => {
   return {
     alerts,
     isLoading,
+    connectionStatus,
     updateAlertStatus,
     refreshAlerts: () => fetchAlerts(selectedDate),
   };

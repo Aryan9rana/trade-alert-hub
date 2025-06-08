@@ -6,13 +6,41 @@ import { RefreshButton } from '@/components/RefreshButton';
 import { DatePicker } from '@/components/DatePicker';
 import { useAlerts } from '@/hooks/useAlerts';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Wifi, WifiOff, AlertTriangle, Loader2 } from 'lucide-react';
 
 const Index = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'ignored' | 'new' | 'active_new'>('active_new');
   
   const dateString = format(selectedDate, 'yyyy-MM-dd');
-  const { alerts, isLoading, updateAlertStatus, refreshAlerts } = useAlerts(dateString);
+  const { alerts, isLoading, connectionStatus, updateAlertStatus, refreshAlerts } = useAlerts(dateString);
+
+  const getConnectionStatusIcon = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return <Wifi className="w-4 h-4 text-emerald-400" />;
+      case 'connecting':
+        return <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />;
+      case 'disconnected':
+        return <WifiOff className="w-4 h-4 text-slate-400" />;
+      case 'error':
+        return <AlertTriangle className="w-4 h-4 text-red-400" />;
+    }
+  };
+
+  const getConnectionStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+      case 'connecting':
+        return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+      case 'disconnected':
+        return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+      case 'error':
+        return 'text-red-400 bg-red-500/10 border-red-500/20';
+    }
+  };
 
   // Filter alerts based on the active filter
   const filteredAlerts = alerts.filter(alert => {
@@ -43,6 +71,13 @@ const Index = () => {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium",
+              getConnectionStatusColor()
+            )}>
+              {getConnectionStatusIcon()}
+              <span className="capitalize">{connectionStatus}</span>
+            </div>
             <DatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} />
             <RefreshButton onRefresh={refreshAlerts} isRefreshing={isLoading} />
           </div>
