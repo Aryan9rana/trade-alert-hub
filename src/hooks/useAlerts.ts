@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,44 +18,48 @@ export interface Alert {
   updated_at: string;
 }
 
+const isValidStatus = (s: string): s is Alert['status'] =>
+  ['new', 'active', 'ignored'].includes(s);
+
+const isValidPriority = (p: string): p is Alert['priority'] =>
+  ['high', 'medium', 'low'].includes(p);
+
 export const useAlerts = (selectedDate: string) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Play notification sound
   const playNotificationSound = () => {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || ((window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext))();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
       oscillator.frequency.value = 800;
       oscillator.type = 'sine';
-      
+
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      
+
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.5);
     } catch (error) {
-      console.log('Audio notification not available:', error);
       try {
         const audio = new Audio('/notification.mp3');
         audio.volume = 0.5;
         audio.play().catch(console.error);
       } catch (audioError) {
-        console.log('Audio file not available:', audioError);
+        console.log('Audio playback failed:', audioError);
       }
     }
   };
 
-  // Fetch alerts for the selected date
   const fetchAlerts = async (date: string) => {
-    console.log('Fetching alerts for date:', date);
+    console.log('📥 Fetching alerts for', date);
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -66,28 +70,26 @@ export const useAlerts = (selectedDate: string) => {
 
       if (error) throw error;
 
-      console.log('Fetched alerts:', data);
       const typedAlerts = (data || []).map(alert => ({
         ...alert,
-        status: alert.status as 'new' | 'active' | 'ignored',
-        priority: alert.priority as 'high' | 'medium' | 'low'
-      }));
-      
+        status: isValidStatus(alert.status) ? alert.status : 'new',
+        priority: isValidPriority(alert.priority) ? alert.priority : 'medium',
+      })) as Alert[];
+
       setAlerts(typedAlerts);
     } catch (error) {
-      console.error('Error fetching alerts:', error);
+      console.error('❌ Error fetching alerts:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch alerts",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to fetch alerts',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Update alert status
-  const updateAlertStatus = async (alertId: string, newStatus: 'new' | 'active' | 'ignored') => {
+  const updateAlertStatus = async (alertId: string, newStatus: Alert['status']) => {
     try {
       const { error } = await supabase
         .from('trading_alerts')
@@ -96,7 +98,12 @@ export const useAlerts = (selectedDate: string) => {
 
       if (error) throw error;
 
-      const alert = alerts.find(a => a.id === alertId);
+      const updated = alerts.map(alert =>
+        alert.id === alertId ? { ...alert, status: newStatus } : alert
+      );
+      setAlerts(updated);
+
+      const alert = updated.find(a => a.id === alertId);
       if (alert) {
         toast({
           title: `Alert ${newStatus}`,
@@ -104,104 +111,168 @@ export const useAlerts = (selectedDate: string) => {
         });
       }
     } catch (error) {
-      console.error('Error updating alert:', error);
+      console.error('❌ Error updating alert:', error);
       toast({
-        title: "Error",
-        description: "Failed to update alert status",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to update alert status',
+        variant: 'destructive',
       });
     }
   };
 
-  // Set up real-time subscription with retry logic
   useEffect(() => {
-    console.log('Setting up real-time subscription for alerts...');
+    console.log('🔁 useEffect triggered: selectedDate =', selectedDate);
     let retryCount = 0;
     const maxRetries = 5;
-    const retryDelay = 2000; // 2 seconds
-    
-    // First, fetch current alerts
+    const retryDelay = 2000;
+    const connectionTimeout = 10000; // 10 seconds connection timeout
+    let isSubscribed = true;
+    let retryTimeout: NodeJS.Timeout;
+    let connectionTimeoutId: NodeJS.Timeout;
+
     fetchAlerts(selectedDate);
-    
+
     const setupSubscription = () => {
+      // Clean up existing subscription if any
+      if (channelRef.current) {
+        console.log('🧹 Cleaning up existing subscription...');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      // Clear any existing timeouts
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      if (connectionTimeoutId) {
+        clearTimeout(connectionTimeoutId);
+      }
+
+      console.log('📡 Setting up real-time subscription...');
+      
+      // Set connection timeout
+      connectionTimeoutId = setTimeout(() => {
+        if (isSubscribed && channelRef.current) {
+          console.warn('⚠️ Connection timeout - cleaning up and retrying...');
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setupSubscription();
+          }
+        }
+      }, connectionTimeout);
+
       const channel = supabase
-        .channel('trading-alerts-changes')
+        .channel('trading-alerts-changes', {
+          config: {
+            broadcast: { self: true },
+            presence: { key: '' },
+          },
+        })
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
-            table: 'trading_alerts'
+            table: 'trading_alerts',
           },
           async (payload) => {
-            console.log('Real-time change received:', payload);
-            console.log('Current selected date:', selectedDate);
-            
-            // Always fetch fresh data on any change
-            await fetchAlerts(selectedDate);
-            
-            if (payload.eventType === 'INSERT') {
-              const newAlert = payload.new as Alert;
-              console.log('New alert received:', newAlert);
-              
-              toast({
-                title: "🚨 New Trading Alert!",
-                description: `${newAlert.title}: ${newAlert.stock_symbol} - ${newAlert.type}`,
-                duration: 5000,
-              });
-              playNotificationSound();
-            } else if (payload.eventType === 'UPDATE') {
-              const updatedAlert = payload.new as Alert;
-              console.log('Alert updated:', updatedAlert);
-              
-              toast({
-                title: "Alert Updated",
-                description: `${updatedAlert.title} has been updated`,
-                duration: 3000,
-              });
-            } else if (payload.eventType === 'DELETE') {
-              const deletedAlert = payload.old as Alert;
-              console.log('Alert deleted:', deletedAlert);
-              
-              toast({
-                title: "Alert Removed",
-                description: `${deletedAlert.title} has been removed`,
-                duration: 3000,
-              });
+            if (!isSubscribed) return;
+
+            try {
+              const { eventType, new: newAlert, old: oldAlert } = payload;
+              console.log(`📬 Real-time ${eventType} received:`, payload);
+
+              if (eventType === 'INSERT') {
+                const typed: Alert = {
+                  ...newAlert,
+                  status: isValidStatus(newAlert.status) ? newAlert.status : 'new',
+                  priority: isValidPriority(newAlert.priority) ? newAlert.priority : 'medium',
+                } as Alert;
+                setAlerts(prev => [typed, ...prev]);
+                toast({
+                  title: '🚨 New Trading Alert!',
+                  description: `${typed.title}: ${typed.stock_symbol} - ${typed.type}`,
+                  duration: 5000,
+                });
+                playNotificationSound();
+              } else if (eventType === 'UPDATE') {
+                const typed: Alert = {
+                  ...newAlert,
+                  status: isValidStatus(newAlert.status) ? newAlert.status : 'new',
+                  priority: isValidPriority(newAlert.priority) ? newAlert.priority : 'medium',
+                } as Alert;
+                setAlerts(prev => prev.map(a => (a.id === typed.id ? typed : a)));
+                toast({
+                  title: 'Alert Updated',
+                  description: `${typed.title} has been updated`,
+                  duration: 3000,
+                });
+              } else if (eventType === 'DELETE') {
+                setAlerts(prev => prev.filter(a => a.id !== oldAlert.id));
+                toast({
+                  title: 'Alert Removed',
+                  description: `${oldAlert.title} has been removed`,
+                  duration: 3000,
+                });
+              }
+            } catch (error) {
+              console.error('Error processing real-time event:', error);
             }
           }
         )
         .subscribe((status) => {
-          console.log('Real-time subscription status:', status);
+          if (!isSubscribed) return;
+
+          console.log('📡 Subscription status:', status);
           if (status === 'SUBSCRIBED') {
-            console.log('Successfully subscribed to real-time updates');
-            retryCount = 0; // Reset retry count on successful subscription
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('Channel error occurred:', status);
-            if (retryCount < maxRetries) {
+            // Clear connection timeout on successful subscription
+            if (connectionTimeoutId) {
+              clearTimeout(connectionTimeoutId);
+            }
+            retryCount = 0;
+            console.log('✅ Real-time subscription established');
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn(`⚠️ Subscription ${status} — retry ${retryCount + 1}`);
+            if (retryCount < maxRetries && isSubscribed) {
               retryCount++;
-              console.log(`Retrying subscription (${retryCount}/${maxRetries})...`);
-              setTimeout(setupSubscription, retryDelay);
+              retryTimeout = setTimeout(() => {
+                if (isSubscribed) {
+                  console.log(`🔄 Attempting to reconnect (attempt ${retryCount})...`);
+                  setupSubscription();
+                }
+              }, retryDelay * Math.pow(2, retryCount - 1)); // Exponential backoff with base 2
             } else {
-              console.error('Max retries reached. Please refresh the page.');
+              console.error('❌ Max retries reached. Manual refresh needed.');
               toast({
-                title: "Connection Error",
-                description: "Failed to establish real-time connection. Please refresh the page.",
-                variant: "destructive",
-                duration: 0, // Don't auto-dismiss
+                title: 'Connection Error',
+                description: 'Real-time connection lost. Please refresh the page.',
+                variant: 'destructive',
+                duration: 0,
               });
             }
           }
         });
 
-      return channel;
+      channelRef.current = channel;
     };
 
-    const channel = setupSubscription();
+    setupSubscription();
 
     return () => {
-      console.log('Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      console.log('🧹 Cleaning up real-time subscription...');
+      isSubscribed = false;
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      if (connectionTimeoutId) {
+        clearTimeout(connectionTimeoutId);
+      }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [selectedDate, toast]);
 
@@ -209,6 +280,6 @@ export const useAlerts = (selectedDate: string) => {
     alerts,
     isLoading,
     updateAlertStatus,
-    refreshAlerts: () => fetchAlerts(selectedDate)
+    refreshAlerts: () => fetchAlerts(selectedDate),
   };
 };
