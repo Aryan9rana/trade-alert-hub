@@ -16,6 +16,9 @@ export interface Alert {
   date: string;
   created_at: string;
   updated_at: string;
+  interval: string;
+  close_to_200_ma_2min: boolean;
+  close_to_200_ma_5min: boolean;
 }
 
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
@@ -28,10 +31,21 @@ const isValidPriority = (p: string): p is Alert['priority'] =>
 
 export const useAlerts = (selectedDate: string) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([]);
+  const [selectedInterval, setSelectedInterval] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const { toast } = useToast();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Filter alerts when selectedInterval changes
+  useEffect(() => {
+    if (selectedInterval === 'all') {
+      setFilteredAlerts(alerts);
+    } else {
+      setFilteredAlerts(alerts.filter(alert => alert.interval === selectedInterval));
+    }
+  }, [selectedInterval, alerts]);
 
   const playNotificationSound = () => {
     try {
@@ -80,6 +94,12 @@ export const useAlerts = (selectedDate: string) => {
       })) as Alert[];
 
       setAlerts(typedAlerts);
+      // Initial filter application
+      if (selectedInterval === 'all') {
+        setFilteredAlerts(typedAlerts);
+      } else {
+        setFilteredAlerts(typedAlerts.filter(alert => alert.interval === selectedInterval));
+      }
     } catch (error) {
       console.error('❌ Error fetching alerts:', error);
       toast({
@@ -287,10 +307,12 @@ export const useAlerts = (selectedDate: string) => {
   }, [selectedDate, toast]);
 
   return {
-    alerts,
+    alerts: filteredAlerts,
     isLoading,
     connectionStatus,
     updateAlertStatus,
+    selectedInterval,
+    setSelectedInterval,
     refreshAlerts: () => fetchAlerts(selectedDate),
   };
 };

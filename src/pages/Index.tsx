@@ -4,6 +4,7 @@ import { FilterTabs } from '@/components/FilterTabs';
 import { StatsCards } from '@/components/StatsCards';
 import { RefreshButton } from '@/components/RefreshButton';
 import { DatePicker } from '@/components/DatePicker';
+import { IntervalFilter } from '@/components/IntervalFilter';
 import { useAlerts } from '@/hooks/useAlerts';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -14,7 +15,15 @@ const Index = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'ignored' | 'new' | 'active_new'>('active_new');
   
   const dateString = format(selectedDate, 'yyyy-MM-dd');
-  const { alerts, isLoading, connectionStatus, updateAlertStatus, refreshAlerts } = useAlerts(dateString);
+  const { 
+    alerts, 
+    isLoading, 
+    connectionStatus, 
+    updateAlertStatus, 
+    refreshAlerts,
+    selectedInterval,
+    setSelectedInterval 
+  } = useAlerts(dateString);
 
   const getConnectionStatusIcon = () => {
     switch (connectionStatus) {
@@ -86,12 +95,18 @@ const Index = () => {
         {/* Stats Cards */}
         <StatsCards stats={stats} />
 
-        {/* Filter Tabs */}
-        <FilterTabs 
-          activeFilter={activeFilter} 
-          onFilterChange={setActiveFilter}
-          stats={stats}
-        />
+        {/* Filters */}
+        <div className="flex items-center justify-between mb-6">
+          <FilterTabs 
+            activeFilter={activeFilter} 
+            onFilterChange={setActiveFilter}
+            stats={stats}
+          />
+          <IntervalFilter 
+            selectedInterval={selectedInterval}
+            onIntervalChange={setSelectedInterval}
+          />
+        </div>
 
         {/* Alerts List */}
         <div className="space-y-4">

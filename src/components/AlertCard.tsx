@@ -19,6 +19,9 @@ interface Alert {
   date: string;
   created_at: string;
   updated_at: string;
+  interval: string;
+  close_to_200_ma_2min: boolean;
+  close_to_200_ma_5min: boolean;
 }
 
 interface AlertCardProps {
@@ -190,6 +193,21 @@ export const AlertCard = ({ alert, onStatusChange }: AlertCardProps) => {
             >
               {alert.stock_symbol}
             </Badge>
+          </div>
+
+          {/* New fields */}
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center text-sm text-slate-400">
+              <span className="mr-2">Interval:</span>
+              <span className="text-white">{alert.interval}m</span>
+            </div>
+            <div className="flex items-center text-sm text-slate-400">
+              <span className="mr-2">200 MA Status:</span>
+              <span className="text-white">
+                {alert.close_to_200_ma_2min ? '2min ✓' : '2min ✗'} | 
+                {alert.close_to_200_ma_5min ? '5min ✓' : '5min ✗'}
+              </span>
+            </div>
           </div>
         </div>
 

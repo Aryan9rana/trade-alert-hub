@@ -24,6 +24,9 @@ export type Database = {
           status: string
           priority: string
           updated_at: string
+          interval: string
+          close_to_200_ma_2min: boolean
+          close_to_200_ma_5min: boolean
         }
         Insert: {
           created_at?: string
@@ -39,6 +42,9 @@ export type Database = {
           status?: string
           priority?: string
           updated_at?: string
+          interval: string
+          close_to_200_ma_2min: boolean
+          close_to_200_ma_5min: boolean
         }
         Update: {
           created_at?: string
@@ -54,6 +60,9 @@ export type Database = {
           status?: string
           priority?: string
           updated_at?: string
+          interval?: string
+          close_to_200_ma_2min?: boolean
+          close_to_200_ma_5min?: boolean
         }
         Relationships: []
       }

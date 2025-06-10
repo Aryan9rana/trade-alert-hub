@@ -36,12 +36,15 @@ Deno.serve(async (req) => {
       entry_price,
       stoploss_price,
       test_mode = false,
-      priority = 'medium'
+      priority = 'medium',
+      interval,
+      close_to_200_ma_2min = false,
+      close_to_200_ma_5min = false
     } = payload
 
-    if (!title || !stock_symbol || !type || !entry_price || !stoploss_price) {
+    if (!title || !stock_symbol || !type || !entry_price || !stoploss_price || !interval) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: title, stock_symbol, type, entry_price, stoploss_price' }),
+        JSON.stringify({ error: 'Missing required fields: title, stock_symbol, type, entry_price, stoploss_price, interval' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -57,7 +60,10 @@ Deno.serve(async (req) => {
         stoploss_price,
         test_mode,
         priority,
-        status: 'new'
+        status: 'new',
+        interval,
+        close_to_200_ma_2min,
+        close_to_200_ma_5min
       })
       .select()
 
