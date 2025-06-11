@@ -19,6 +19,17 @@ export interface Alert {
   interval: string;
   close_to_200_ma_2min: boolean;
   close_to_200_ma_5min: boolean;
+  above_200_ma_2min: boolean;
+  above_200_ma_5min: boolean;
+  close_to_prev_month_high: boolean;
+  close_to_prev_month_low: boolean;
+  above_prev_month_high: boolean;
+  above_prev_month_low: boolean;
+  close_to_orb_high: boolean;
+  close_to_orb_low: boolean;
+  above_orb_high: boolean;
+  above_orb_low: boolean;
+  supertrend_trend: 'up' | 'down';
 }
 
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error';

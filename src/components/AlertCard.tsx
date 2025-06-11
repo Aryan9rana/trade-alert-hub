@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Clock, TrendingUp, AlertTriangle, Star } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, AlertTriangle, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
@@ -22,6 +22,17 @@ interface Alert {
   interval: string;
   close_to_200_ma_2min: boolean;
   close_to_200_ma_5min: boolean;
+  above_200_ma_2min: boolean;
+  above_200_ma_5min: boolean;
+  close_to_prev_month_high: boolean;
+  close_to_prev_month_low: boolean;
+  above_prev_month_high: boolean;
+  above_prev_month_low: boolean;
+  close_to_orb_high: boolean;
+  close_to_orb_low: boolean;
+  above_orb_high: boolean;
+  above_orb_low: boolean;
+  supertrend_trend: 'up' | 'down';
 }
 
 interface AlertCardProps {
@@ -99,6 +110,28 @@ export const AlertCard = ({ alert, onStatusChange }: AlertCardProps) => {
     }
   };
 
+  const getTypeColor = () => {
+    switch (alert.type.toLowerCase()) {
+      case 'long':
+        return {
+          card: 'border-emerald-500/20 bg-emerald-500/5',
+          badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30'
+        };
+      case 'short':
+        return {
+          card: 'border-red-500/20 bg-red-500/5',
+          badge: 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30'
+        };
+      default:
+        return {
+          card: 'border-slate-500/20 bg-slate-500/5',
+          badge: 'bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30'
+        };
+    }
+  };
+
+  const typeColors = getTypeColor();
+
   const getStatusBadgeColor = () => {
     switch (alert.status) {
       case 'new':
@@ -123,55 +156,194 @@ export const AlertCard = ({ alert, onStatusChange }: AlertCardProps) => {
     }
   };
 
+  const getTypeIcon = () => {
+    switch (alert.type.toLowerCase()) {
+      case 'long':
+        return <TrendingUp className="w-4 h-4 text-emerald-400" />;
+      case 'short':
+        return <TrendingDown className="w-4 h-4 text-red-400" />;
+      default:
+        return getPriorityIcon();
+    }
+  };
+
   return (
     <Card className={cn(
-      "p-6 border transition-all duration-200 hover:shadow-lg bg-slate-800/50",
+      "p-4 border transition-all duration-200 hover:shadow-lg",
       alert.status === 'ignored' ? "opacity-75" : "",
-      getStatusColor()
+      typeColors.card
     )}>
-      <div className="flex items-start justify-between">
-        <div className="flex-1 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        {/* Left Column - Main Info */}
+        <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-center gap-3">
-            {getPriorityIcon()}
-            <h3 className="text-lg font-semibold text-white">
+          <div className="flex items-center gap-2 mb-3">
+            {getTypeIcon()}
+            <Badge 
+              variant="outline"
+              className={cn("text-sm font-semibold", typeColors.badge)}
+            >
+              {alert.stock_symbol}
+            </Badge>
+            <h3 className="text-lg font-semibold text-white truncate">
               {alert.title}
             </h3>
-            <Badge 
-              variant="outline"
-              className={cn("text-xs flex items-center gap-1", getStatusBadgeColor())}
-            >
-              {getStatusIcon()}
-              {alert.status.toUpperCase()}
-            </Badge>
-            <Badge 
-              variant="outline"
-              className={cn(
-                "text-xs border",
-                alert.priority === 'high' 
-                  ? "border-red-500/30 text-red-400"
-                  : alert.priority === 'medium'
-                  ? "border-yellow-500/30 text-yellow-400"
-                  : "border-slate-500/30 text-slate-400"
-              )}
-            >
-              {alert.priority.toUpperCase()}
-            </Badge>
+            <div className="flex items-center gap-1 ml-auto">
+              <Badge 
+                variant="outline"
+                className={cn("text-xs flex items-center gap-1", getStatusBadgeColor())}
+              >
+                {getStatusIcon()}
+                {alert.status.toUpperCase()}
+              </Badge>
+              <Badge 
+                variant="outline"
+                className={cn(
+                  "text-xs border",
+                  alert.priority === 'high' 
+                    ? "border-red-500/30 text-red-400"
+                    : alert.priority === 'medium'
+                    ? "border-yellow-500/30 text-yellow-400"
+                    : "border-slate-500/30 text-slate-400"
+                )}
+              >
+                {alert.priority.toUpperCase()}
+              </Badge>
+            </div>
           </div>
 
-          {/* Alert Details */}
-          <div className="text-slate-300 leading-relaxed space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Type:</span>
-              <span>{alert.type}</span>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            {/* Price Info */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">Entry:</span>
+                <span className="text-white">${alert.entry_price.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">SL:</span>
+                <span className="text-white">${alert.stoploss_price.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Entry Price:</span>
-              <span>${alert.entry_price.toFixed(2)}</span>
+
+            {/* Technical Indicators */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">Interval:</span>
+                <span className="text-white">{alert.interval}m</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">Supertrend:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.supertrend_trend === 'up' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
+                  )}
+                >
+                  {alert.supertrend_trend.toUpperCase()}
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Stop Loss:</span>
-              <span>${alert.stoploss_price.toFixed(2)}</span>
+
+            {/* 200 MA Status */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">2min MA:</span>
+                <div className="flex items-center gap-1">
+                  {alert.close_to_200_ma_2min && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                  )}
+                  {alert.above_200_ma_2min ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">5min MA:</span>
+                <div className="flex items-center gap-1">
+                  {alert.close_to_200_ma_5min && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                  )}
+                  {alert.above_200_ma_5min ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Previous Month Levels */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">PMH:</span>
+                <div className="flex items-center gap-1">
+                  {alert.close_to_prev_month_high && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                  )}
+                  {alert.above_prev_month_high ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">PML:</span>
+                <div className="flex items-center gap-1">
+                  {alert.close_to_prev_month_low && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                  )}
+                  {alert.above_prev_month_low ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ORB Levels */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">ORB High:</span>
+                <div className="flex items-center gap-1">
+                  {alert.close_to_orb_high && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                  )}
+                  {alert.above_orb_high ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">ORB Low:</span>
+                <div className="flex items-center gap-1">
+                  {alert.close_to_orb_low && (
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                  )}
+                  {alert.above_orb_low ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-700/50">
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <Clock className="w-4 h-4" />
+              {formattedTime}
             </div>
             {alert.test_mode && (
               <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
@@ -179,40 +351,10 @@ export const AlertCard = ({ alert, onStatusChange }: AlertCardProps) => {
               </Badge>
             )}
           </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Clock className="w-4 h-4" />
-              {formattedTime}
-            </div>
-            
-            <Badge 
-              variant="outline"
-              className="text-xs bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
-            >
-              {alert.stock_symbol}
-            </Badge>
-          </div>
-
-          {/* New fields */}
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center text-sm text-slate-400">
-              <span className="mr-2">Interval:</span>
-              <span className="text-white">{alert.interval}m</span>
-            </div>
-            <div className="flex items-center text-sm text-slate-400">
-              <span className="mr-2">200 MA Status:</span>
-              <span className="text-white">
-                {alert.close_to_200_ma_2min ? '2min ✓' : '2min ✗'} | 
-                {alert.close_to_200_ma_5min ? '5min ✓' : '5min ✗'}
-              </span>
-            </div>
-          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="ml-6 flex flex-col gap-2">
+        {/* Right Column - Action Buttons */}
+        <div className="flex flex-col gap-2">
           {alert.status === 'new' && (
             <>
               <Button

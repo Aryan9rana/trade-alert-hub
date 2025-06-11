@@ -39,7 +39,18 @@ Deno.serve(async (req) => {
       priority = 'medium',
       interval,
       close_to_200_ma_2min = false,
-      close_to_200_ma_5min = false
+      close_to_200_ma_5min = false,
+      above_200_ma_2min = false,
+      above_200_ma_5min = false,
+      close_to_prev_month_high = false,
+      close_to_prev_month_low = false,
+      above_prev_month_high = false,
+      above_prev_month_low = false,
+      close_to_orb_high = false,
+      close_to_orb_low = false,
+      above_orb_high = false,
+      above_orb_low = false,
+      supertrend_trend = 'up'
     } = payload
 
     if (!title || !stock_symbol || !type || !entry_price || !stoploss_price || !interval) {
@@ -63,7 +74,18 @@ Deno.serve(async (req) => {
         status: 'new',
         interval,
         close_to_200_ma_2min,
-        close_to_200_ma_5min
+        close_to_200_ma_5min,
+        above_200_ma_2min,
+        above_200_ma_5min,
+        close_to_prev_month_high,
+        close_to_prev_month_low,
+        above_prev_month_high,
+        above_prev_month_low,
+        close_to_orb_high,
+        close_to_orb_low,
+        above_orb_high,
+        above_orb_low,
+        supertrend_trend
       })
       .select()
 
