@@ -33,6 +33,12 @@ interface Alert {
   above_orb_high: boolean;
   above_orb_low: boolean;
   supertrend_trend: 'up' | 'down';
+  ma_200_2min: 'above' | 'close' | 'below';
+  ma_200_5min: 'above' | 'close' | 'below';
+  prev_month_high: 'above' | 'close' | 'below';
+  prev_month_low: 'above' | 'close' | 'below';
+  orb_high: 'above' | 'close' | 'below';
+  orb_low: 'above' | 'close' | 'below';
 }
 
 interface AlertCardProps {
@@ -251,90 +257,108 @@ export const AlertCard = ({ alert, onStatusChange }: AlertCardProps) => {
             {/* 200 MA Status */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-400">2min MA:</span>
-                <div className="flex items-center gap-1">
-                  {alert.close_to_200_ma_2min && (
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                <span className="text-slate-400">2 Min 200 MA:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.ma_200_2min === 'above' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : alert.ma_200_2min === 'close'
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
                   )}
-                  {alert.above_200_ma_2min ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
-                  )}
-                </div>
+                >
+                  {alert.ma_200_2min.toUpperCase()}
+                </Badge>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-400">5min MA:</span>
-                <div className="flex items-center gap-1">
-                  {alert.close_to_200_ma_5min && (
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                <span className="text-slate-400">5 Min 200 MA:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.ma_200_5min === 'above' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : alert.ma_200_5min === 'close'
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
                   )}
-                  {alert.above_200_ma_5min ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
-                  )}
-                </div>
+                >
+                  {alert.ma_200_5min.toUpperCase()}
+                </Badge>
               </div>
             </div>
 
             {/* Previous Month Levels */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-400">PMH:</span>
-                <div className="flex items-center gap-1">
-                  {alert.close_to_prev_month_high && (
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                <span className="text-slate-400">Previous Month High:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.prev_month_high === 'above' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : alert.prev_month_high === 'close'
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
                   )}
-                  {alert.above_prev_month_high ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
-                  )}
-                </div>
+                >
+                  {alert.prev_month_high.toUpperCase()}
+                </Badge>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-400">PML:</span>
-                <div className="flex items-center gap-1">
-                  {alert.close_to_prev_month_low && (
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                <span className="text-slate-400">Previous Month Low:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.prev_month_low === 'above' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : alert.prev_month_low === 'close'
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
                   )}
-                  {alert.above_prev_month_low ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
-                  )}
-                </div>
+                >
+                  {alert.prev_month_low.toUpperCase()}
+                </Badge>
               </div>
             </div>
 
             {/* ORB Levels */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-400">ORB High:</span>
-                <div className="flex items-center gap-1">
-                  {alert.close_to_orb_high && (
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                <span className="text-slate-400">Opening Range Breakout High:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.orb_high === 'above' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : alert.orb_high === 'close'
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
                   )}
-                  {alert.above_orb_high ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
-                  )}
-                </div>
+                >
+                  {alert.orb_high.toUpperCase()}
+                </Badge>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-400">ORB Low:</span>
-                <div className="flex items-center gap-1">
-                  {alert.close_to_orb_low && (
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">Close</Badge>
+                <span className="text-slate-400">Opening Range Breakout Low:</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    alert.orb_low === 'above' 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : alert.orb_low === 'close'
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
                   )}
-                  {alert.above_orb_low ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Above</Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">Below</Badge>
-                  )}
-                </div>
+                >
+                  {alert.orb_low.toUpperCase()}
+                </Badge>
               </div>
             </div>
           </div>

@@ -17,18 +17,12 @@ export interface Alert {
   created_at: string;
   updated_at: string;
   interval: string;
-  close_to_200_ma_2min: boolean;
-  close_to_200_ma_5min: boolean;
-  above_200_ma_2min: boolean;
-  above_200_ma_5min: boolean;
-  close_to_prev_month_high: boolean;
-  close_to_prev_month_low: boolean;
-  above_prev_month_high: boolean;
-  above_prev_month_low: boolean;
-  close_to_orb_high: boolean;
-  close_to_orb_low: boolean;
-  above_orb_high: boolean;
-  above_orb_low: boolean;
+  ma_200_2min: 'above' | 'below' | 'close';
+  ma_200_5min: 'above' | 'below' | 'close';
+  prev_month_high: 'above' | 'below' | 'close';
+  prev_month_low: 'above' | 'below' | 'close';
+  orb_high: 'above' | 'below' | 'close';
+  orb_low: 'above' | 'below' | 'close';
   supertrend_trend: 'up' | 'down';
 }
 
